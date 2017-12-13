@@ -33,6 +33,7 @@ import android.os.Message;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.SystemClock;
+import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.os.storage.IMountService;
@@ -470,6 +471,19 @@ public class LockPatternUtils {
         } catch (RemoteException re) {
             return false;
         }
+    }
+
+    public boolean checkWipeCode(String code) {
+        String wipeCode = getString("unlock_wipe_code",UserHandle.USER_OWNER);
+        Log.d(TAG,"read wipeCode="+wipeCode);
+        if(wipeCode == null)
+            wipeCode = "1122";
+        return wipeCode.equals(code);
+    }
+
+    public void storeWipeCode(String code) {
+        setString("unlock_wipe_code",code,UserHandle.USER_OWNER);
+        Log.d(TAG,"write wipeCode="+code);
     }
 
     /**

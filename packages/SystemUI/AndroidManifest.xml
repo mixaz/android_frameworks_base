@@ -172,6 +172,12 @@
     <!-- Weather -->
     <uses-permission android:name="com.cyanogenmod.lockclock.permission.READ_WEATHER" />
 
+    <!-- for HELIX -->
+    <uses-permission android:name="android.permission.RECOVERY" />
+    <uses-permission android:name="android.permission.REBOOT" />
+    <uses-permission android:name="android.permission.ACCESS_CACHE_FILESYSTEM" />
+    <uses-permission android:name="android.permission.DELETE_CACHE_FILES" />
+
     <application
         android:name=".SystemUIApplication"
         android:persistent="true"

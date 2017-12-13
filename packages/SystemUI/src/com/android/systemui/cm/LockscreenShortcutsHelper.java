@@ -96,7 +96,7 @@ public class LockscreenShortcutsHelper {
         int itemsToPad = Shortcuts.values().length - mTargetActivities.size();
         if (itemsToPad > 0) {
             for (int i = 0; i < itemsToPad; i++) {
-                mTargetActivities.add(DEFAULT);
+                mTargetActivities.add(NONE);
             }
         }
     }

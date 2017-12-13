@@ -90,6 +90,8 @@ public class KeyguardStatusBarView extends RelativeLayout
         mCarrierLabel = (TextView) findViewById(R.id.keyguard_carrier_text);
         loadDimens();
         updateUserSwitcher();
+        if(mMultiUserSwitch != null)
+            mMultiUserSwitch.setVisibility(View.INVISIBLE);
     }
 
     @Override

@@ -358,7 +358,7 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
         if (mLeftAffordanceView == null) {
             return;
         }
-        boolean visible = mUserSetupComplete;
+        boolean visible = false; //mUserSetupComplete;
         if (visible) {
             if (isTargetCustom(Shortcuts.LEFT_SHORTCUT)) {
                 visible = !mShortcutHelper.isTargetEmpty(Shortcuts.LEFT_SHORTCUT);
@@ -374,7 +374,7 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
             // Things are not set up yet; reply hazy, ask again later
             return;
         }
-        boolean visible = mUserSetupComplete;
+        boolean visible = false; //mUserSetupComplete;
         if (visible) {
             if (isTargetCustom(Shortcuts.RIGHT_SHORTCUT)) {
                 visible = !mShortcutHelper.isTargetEmpty(Shortcuts.RIGHT_SHORTCUT);

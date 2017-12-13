@@ -21,10 +21,7 @@ import android.app.ActivityOptions;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
-import android.os.PowerManager;
-import android.os.RemoteException;
-import android.os.SystemClock;
-import android.os.UserHandle;
+import android.os.*;
 import android.telecom.TelecomManager;
 import android.telephony.ServiceState;
 import android.util.AttributeSet;
@@ -217,6 +214,9 @@ public class EmergencyButton extends Button {
                     visible = visible && !monitor.isOOS();
                 }
             }
+        }
+        if(SystemProperties.getBoolean("helix.settings", true)) {
+            visible = false;
         }
         if (visible) {
             setVisibility(View.VISIBLE);

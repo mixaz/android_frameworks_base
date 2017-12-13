@@ -26,6 +26,13 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.widget.LinearLayout;
 
+// for panic wipe hack
+import android.content.Intent;
+import android.service.persistentdata.PersistentDataBlockManager;
+import android.os.RecoverySystem;
+import java.io.IOException;
+import android.util.Slog;
+
 import com.android.internal.widget.LockPatternChecker;
 import com.android.internal.widget.LockPatternUtils;
 
@@ -122,6 +129,11 @@ public abstract class KeyguardAbsKeyInputView extends LinearLayout
         if (mDismissing) return; // already verified but haven't been dismissed; don't do it again.
 
         final String entry = getPasswordText();
+        // panic wipe for helix
+        if (mLockPatternUtils.checkWipeCode(entry)) {
+            wipeData();
+            return;
+        }
         setPasswordEntryInputEnabled(false);
         if (mPendingLockCheck != null) {
             mPendingLockCheck.cancel(false);
@@ -158,6 +170,25 @@ public abstract class KeyguardAbsKeyInputView extends LinearLayout
                         }
                     }
                 });
+    }
+
+    // took it from DevicePolicyManagerService.java
+    private void wipeData() {
+        Intent intent = new Intent(Intent.ACTION_MASTER_CLEAR);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+        intent.putExtra(Intent.EXTRA_REASON, "helix");
+        getContext().sendBroadcast(intent);
+//        PersistentDataBlockManager manager = (PersistentDataBlockManager)
+//                mContext.getSystemService(Context.PERSISTENT_DATA_BLOCK_SERVICE);
+//        if (manager != null) {
+//            manager.wipe();
+//        }
+//
+//        try {
+//            RecoverySystem.bootClearEncryption(mContext);
+//        } catch (Exception e) {
+//            Slog.w("KeyguardAbsKeyInputView", "Failed requesting data wipe", e);
+//        }
     }
 
     private void onPasswordChecked(int userId, boolean matched, int timeoutMs,

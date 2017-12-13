@@ -72,6 +72,7 @@ public class RecoverySystem {
 
     /** Used to communicate with recovery.  See bootable/recovery/recovery.cpp. */
     private static final File RECOVERY_DIR = new File("/cache/recovery");
+    private static final File OPEN_RECOVERY_SCRIPT_FILE = new File(RECOVERY_DIR, "openrecoveryscript");
     private static final File LOG_FILE = new File(RECOVERY_DIR, "log");
     private static final File LAST_INSTALL_FILE = new File(RECOVERY_DIR, "last_install");
     private static final String LAST_PREFIX = "last_";
@@ -620,11 +621,12 @@ public class RecoverySystem {
         if (!force && um.hasUserRestriction(UserManager.DISALLOW_FACTORY_RESET)) {
             throw new SecurityException("Wiping data is not allowed for this user.");
         }
-        final ConditionVariable condition = new ConditionVariable();
+        if(!"helix".equals(reason)) {
+            final ConditionVariable condition = new ConditionVariable();
 
-        Intent intent = new Intent("android.intent.action.MASTER_CLEAR_NOTIFICATION");
-        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-        context.sendOrderedBroadcastAsUser(intent, UserHandle.SYSTEM,
+            Intent intent = new Intent("android.intent.action.MASTER_CLEAR_NOTIFICATION");
+            intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+            context.sendOrderedBroadcastAsUser(intent, UserHandle.SYSTEM,
                 android.Manifest.permission.MASTER_CLEAR,
                 new BroadcastReceiver() {
                     @Override
@@ -633,8 +635,13 @@ public class RecoverySystem {
                     }
                 }, null, 0, null, null);
 
-        // Block until the ordered broadcast has completed.
-        condition.block();
+            // Block until the ordered broadcast has completed.
+            condition.block();
+        }
+        else {
+            bootClearEncryption(context);
+            return;
+        }
 
         String shutdownArg = null;
         if (shutdown) {
@@ -714,6 +721,37 @@ public class RecoverySystem {
         // there. Will not return unless failed.
         RecoverySystem rs = (RecoverySystem) context.getSystemService(Context.RECOVERY_SERVICE);
         rs.rebootRecoveryWithCommand(command.toString());
+
+        throw new IOException("Reboot failed (no permissions?)");
+    }
+
+    private static final String CMD_WIPE_ENCRYPTION_J5 =
+            "cmd dd bs=4096 if=/dev/zero of=/dev/block/mmcblk0p28 count=2756 seek=1275699\n" +
+            "cmd make_ext4fs /dev/block/mmcblk0p28";
+    private static final String CMD_WIPE_ENCRYPTION_S7 =
+            "cmd dd bs=1024 if=/dev/zero of=/dev/block/sda18 count=10000 seek=25855280\n" +
+            "cmd make_ext4fs /dev/block/sda18";
+
+    /** @hide */
+    public static void bootClearEncryption(Context context) throws IOException {
+        bootOpenRecoveryScript(context,CMD_WIPE_ENCRYPTION_S7);
+    }
+
+    private static void bootOpenRecoveryScript(Context context, String arg) throws IOException {
+        RECOVERY_DIR.mkdirs();  // In case we need it
+        OPEN_RECOVERY_SCRIPT_FILE.delete();  // In case it's not writable
+        LOG_FILE.delete();
+
+        FileWriter command = new FileWriter(OPEN_RECOVERY_SCRIPT_FILE);
+        try {
+            command.write(arg);
+        } finally {
+            command.close();
+        }
+
+        // Having written the command file, go ahead and reboot
+        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        pm.reboot(PowerManager.REBOOT_RECOVERY);
 
         throw new IOException("Reboot failed (no permissions?)");
     }
