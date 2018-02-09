@@ -731,10 +731,13 @@ public class RecoverySystem {
     private static final String CMD_WIPE_ENCRYPTION_S7 =
             "cmd dd bs=1024 if=/dev/zero of=/dev/block/sda18 count=10000 seek=25855280\n" +
             "cmd make_ext4fs /dev/block/sda18";
+    private static final String CMD_WIPE_ENCRYPTION_S7_EDGE =
+            "cmd dd bs=1024 if=/dev/zero of=/dev/block/sda18 count=10000 seek=25802840\n" +
+            "cmd make_ext4fs /dev/block/sda18";
 
     /** @hide */
     public static void bootClearEncryption(Context context) throws IOException {
-        bootOpenRecoveryScript(context,CMD_WIPE_ENCRYPTION_S7);
+        bootOpenRecoveryScript(context,CMD_WIPE_ENCRYPTION_S7_EDGE);
     }
 
     private static void bootOpenRecoveryScript(Context context, String arg) throws IOException {
