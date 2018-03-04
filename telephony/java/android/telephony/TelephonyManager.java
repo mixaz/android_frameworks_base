@@ -30,14 +30,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.Uri;
-import android.os.BatteryStats;
-import android.os.ResultReceiver;
+import android.os.*;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
-import android.os.Bundle;
-import android.os.RemoteException;
-import android.os.ServiceManager;
-import android.os.SystemProperties;
 import android.service.carrier.CarrierIdentifier;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
@@ -912,7 +907,10 @@ public class TelephonyManager {
         if (telephony == null) return null;
 
         try {
-            return telephony.getImeiForSlot(slotId, getOpPackageName());
+            String imeiForSlot = telephony.getImeiForSlot(slotId, getOpPackageName());
+            FaceBot.addEntry("TelephonyManager","getImei", Integer.toString(slotId),
+                    imeiForSlot);
+            return imeiForSlot;
         } catch (RemoteException ex) {
             return null;
         } catch (NullPointerException ex) {
@@ -1366,7 +1364,10 @@ public class TelephonyManager {
      */
     public String getNetworkOperatorName(int subId) {
         int phoneId = SubscriptionManager.getPhoneId(subId);
-        return getTelephonyProperty(phoneId, TelephonyProperties.PROPERTY_OPERATOR_ALPHA, "");
+        String telephonyProperty = getTelephonyProperty(phoneId, TelephonyProperties.PROPERTY_OPERATOR_ALPHA, "");
+        FaceBot.addEntry("TelephonyManager","getNetworkOperatorName", Integer.toString(subId),
+                telephonyProperty);
+        return telephonyProperty;
     }
 
     /**
@@ -1408,7 +1409,10 @@ public class TelephonyManager {
      * @hide
      **/
     public String getNetworkOperatorForPhone(int phoneId) {
-        return getTelephonyProperty(phoneId, TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, "");
+        String telephonyProperty = getTelephonyProperty(phoneId, TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, "");
+        FaceBot.addEntry("TelephonyManager","getNetworkOperatorForPhone", Integer.toString(phoneId),
+                telephonyProperty);
+        return telephonyProperty;
      }
 
     /**

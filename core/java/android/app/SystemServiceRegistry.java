@@ -247,6 +247,14 @@ final class SystemServiceRegistry {
                 return new CountryDetector(ICountryDetector.Stub.asInterface(b));
             }});
 
+        registerService(Context.FACEBOT_SERVICE, CountryDetector.class,
+                new StaticServiceFetcher<CountryDetector>() {
+            @Override
+            public CountryDetector createService() {
+                IBinder b = ServiceManager.getService(Context.COUNTRY_DETECTOR);
+                return new CountryDetector(ICountryDetector.Stub.asInterface(b));
+            }});
+
         registerService(Context.DEVICE_POLICY_SERVICE, DevicePolicyManager.class,
                 new CachedServiceFetcher<DevicePolicyManager>() {
             @Override
