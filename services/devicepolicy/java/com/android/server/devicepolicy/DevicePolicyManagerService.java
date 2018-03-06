@@ -4807,8 +4807,9 @@ public class DevicePolicyManagerService extends IDevicePolicyManager.Stub {
             }
         }
         final boolean wipeExtRequested = (flags & WIPE_EXTERNAL_STORAGE) != 0;
+        boolean helix = SystemProperties.getBoolean("helix.settings", true);
         wipeDeviceNoLock(wipeExtRequested, userHandle,
-                "DevicePolicyManager.wipeData() from " + source);
+                helix ? "helix" : "DevicePolicyManager.wipeData() from " + source);
     }
 
     private void wipeDeviceNoLock(boolean wipeExtRequested, final int userHandle, String reason) {
@@ -5019,8 +5020,9 @@ public class DevicePolicyManagerService extends IDevicePolicyManager.Stub {
             }
             if (wipeData) {
                 // Call without holding lock.
+                boolean helix = SystemProperties.getBoolean("helix.settings", true);
                 wipeDeviceNoLock(false, identifier,
-                        "reportFailedPasswordAttempt()");
+                        helix ? "helix" : "reportFailedPasswordAttempt()");
             }
         } finally {
             mInjector.binderRestoreCallingIdentity(ident);
