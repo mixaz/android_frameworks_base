@@ -33,21 +33,23 @@ import java.util.Map;
 public class FaceBotService extends IFaceBot.Stub implements Runnable {
 
     private final static String TAG = "FaceBotService";
+    public static final String FACEBOT_MODE_PROPERTY = "facebot.mode";
 
-    private final Context mContext;
+    //    private final Context mContext;
     private boolean mSystemReady;
 
     public FaceBotService(Context context) {
         super();
-        mContext = context;
+//        mContext = context;
     }
 
-    private static final HashMap<Entry, Entry> ENTRIES = new HashMap();
-    private static final String FILE_WRITE = "/sdcard/facebot_write.log";
-    private static final String FILE_READ = "/sdcard/facebot_read.log";
+    private final HashMap<Entry, Entry> CURR_ENTRIES = new HashMap();
+    private final HashMap<Entry, Entry> NEW_ENTRIES = new HashMap();
+    private final String FILE_WRITE = "/sdcard/facebot_write.log";
+    private final String FILE_READ  = "/sdcard/facebot_read.log";
 
-    private static BufferedOutputStream writer = null;
-    private static boolean newData = false;
+//    private BufferedOutputStream writer = null;
+    private boolean newData = false;
 
     enum FacebotMode {
         DISABLED,
@@ -68,28 +70,30 @@ public class FaceBotService extends IFaceBot.Stub implements Runnable {
             case RECORD: {
                 Entry entry = new Entry(className, methodName, arguments, result);
                 boolean storeEntry = false;
-                synchronized (ENTRIES) {
-                    if (!ENTRIES.containsKey(entry)) {
+                synchronized (CURR_ENTRIES) {
+                    if (!CURR_ENTRIES.containsKey(entry)) {
                         storeEntry = true;
-                    } else {
-                        Entry oldEntry = ENTRIES.get(entry);
+                    }
+                    else {
+                        Entry oldEntry = CURR_ENTRIES.get(entry);
                         String oldRez = oldEntry.map.get("result");
                         if (!oldRez.equals(result)) {
                             storeEntry = true;
                         }
                     }
                     if (storeEntry) {
-                        ENTRIES.put(entry, entry);
+                        CURR_ENTRIES.put(entry, entry);
+                        synchronized (NEW_ENTRIES) {
+                            NEW_ENTRIES.put(entry, entry);
+                            newData = true;
+                        }
                     }
-                }
-                if (storeEntry) {
-                    writeEntry(entry);
                 }
                 break;
             }
             case PLAY: {
                 Entry entry = new Entry(className, methodName, arguments, result);
-                Entry oldEntry = ENTRIES.get(entry);
+                Entry oldEntry = CURR_ENTRIES.get(entry);
                 result = oldEntry.map.get("result");
                 Log.d(TAG, oldEntry.toString());
                 break;
@@ -98,78 +102,63 @@ public class FaceBotService extends IFaceBot.Stub implements Runnable {
         return result;
     }
 
-    private void writeEntry(Entry entry) {
+    private void writeEntries() throws IOException {
         try(FileWriter fw = new FileWriter(FILE_WRITE, true);
             BufferedWriter bw = new BufferedWriter(fw);
             PrintWriter out = new PrintWriter(bw)) {
-            String ss = FaceBotService.JsonSerializer.toJson(entry);
-            out.println(ss);
-        } catch (IOException e) {
-            e.printStackTrace();
+            HashMap<Entry,Entry> temp = new HashMap<Entry,Entry>();
+            synchronized (NEW_ENTRIES) {
+                temp.putAll(NEW_ENTRIES);
+                NEW_ENTRIES.clear();
+                newData = false;
+            }
+            for (Entry entry :
+                    temp.values()) {
+                String ss = FaceBotService.JsonSerializer.toJson(entry);
+                out.println(ss);
+            }
         }
     }
 
     private void loadEntries() {
-        File file = new File(FILE_WRITE);
+        File file = new File(FILE_READ);
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = br.readLine()) != null) {
                 Entry entry = FaceBotService.JsonSerializer.fromJson(line);
-                ENTRIES.put(entry,entry);
+                CURR_ENTRIES.put(entry,entry);
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private static void openWriter() {
-        File file = new File(FILE_WRITE);
-        try {
-            if(!file.exists())
-                file.createNewFile();
-            writer = new BufferedOutputStream(new FileOutputStream(file));
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    while(true) {
-                        if (writer != null) {
-                            if(newData) {
-                                synchronized (writer) {
-                                    newData = false;
-                                    try {
-                                        writer.flush();
-                                    } catch (IOException e) {
-                                        e.printStackTrace();
-                                        break;
-                                    }
-                                }
-                            }
-                        }
+    private void startWriterThread() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while(true) {
+                    if(newData) {
                         try {
-                            Thread.sleep(10000);
-                        } catch (InterruptedException e) {
+                            writeEntries();
+                        } catch (IOException e) {
+                            // clear map to save resources
+                            synchronized (NEW_ENTRIES) {
+                                NEW_ENTRIES.clear();
+                                newData = false;
+                            }
                             e.printStackTrace();
-                            break;
                         }
                     }
+                    try {
+                        Thread.sleep(10000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                        break;
+                    }
                 }
-            }).start();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private static void closeWriter() {
-        synchronized (writer) {
-            if (writer != null) {
-                try {
-                    writer.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                writer = null;
             }
-        }
+        }).start();
     }
 
     public static class JsonSerializer {
@@ -219,7 +208,7 @@ public class FaceBotService extends IFaceBot.Stub implements Runnable {
                 }
                 jsonReader.endObject();
             } catch(Exception e) {
-                Log.e(TAG, "Could not parse ThemeConfig from: " + json, e);
+                Log.e(TAG, "Could not parse Entry from: " + json, e);
             } finally {
                 closeQuietly(reader);
                 closeQuietly(jsonReader);
@@ -267,12 +256,12 @@ public class FaceBotService extends IFaceBot.Stub implements Runnable {
     }
 
     private void initialize() {
-         mode = FacebotMode.values()[SystemProperties.getInt("facebot.mode", 0)];
+         mode = FacebotMode.values()[SystemProperties.getInt(FACEBOT_MODE_PROPERTY, 0)];
          switch(mode) {
              case DISABLED:
                  break;
              case RECORD:
-                 openWriter();
+                 startWriterThread();
                  break;
              case PLAY:
                  loadEntries();
