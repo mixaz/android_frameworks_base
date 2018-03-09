@@ -3022,6 +3022,11 @@ public abstract class Context {
     public static final String COUNTRY_DETECTOR = "country_detector";
 
     /**
+     * @hide
+     */
+    public static final String FACEBOT_SERVICE = "facebot";
+
+    /**
      * Use with {@link #getSystemService} to retrieve a {@link
      * android.app.SearchManager} for handling searches.
      *

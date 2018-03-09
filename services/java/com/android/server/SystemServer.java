@@ -737,6 +737,7 @@ public final class SystemServer {
         INotificationManager notification = null;
         LocationManagerService location = null;
         CountryDetectorService countryDetector = null;
+        FaceBotService faceBotService = null;
         ILockSettings lockSettings = null;
         AssetAtlasService atlas = null;
         MediaRouterService mediaRouter = null;
@@ -1009,6 +1010,15 @@ public final class SystemServer {
                     ServiceManager.addService(Context.COUNTRY_DETECTOR, countryDetector);
                 } catch (Throwable e) {
                     reportWtf("starting Country Detector", e);
+                }
+                Trace.traceEnd(Trace.TRACE_TAG_SYSTEM_SERVER);
+
+                traceBeginAndSlog("StartFaceBotService");
+                try {
+                    faceBotService = new FaceBotService(context);
+                    ServiceManager.addService(Context.FACEBOT_SERVICE, faceBotService);
+                } catch (Throwable e) {
+                    reportWtf("starting FaceBot", e);
                 }
                 Trace.traceEnd(Trace.TRACE_TAG_SYSTEM_SERVER);
             }
@@ -1450,6 +1460,7 @@ public final class SystemServer {
         final NetworkScoreService networkScoreF = networkScore;
         final LocationManagerService locationF = location;
         final CountryDetectorService countryDetectorF = countryDetector;
+        final FaceBotService faceBotF = faceBotService;
         final NetworkTimeUpdateService networkTimeUpdaterF = networkTimeUpdater;
         final CommonTimeManagementService commonTimeMgmtServiceF = commonTimeMgmtService;
         final AssetAtlasService atlasF = atlas;
@@ -1547,6 +1558,11 @@ public final class SystemServer {
                     if (countryDetectorF != null) countryDetectorF.systemRunning();
                 } catch (Throwable e) {
                     reportWtf("Notifying CountryDetectorService running", e);
+                }
+                try {
+                    if (faceBotF != null) faceBotF.systemRunning();
+                } catch (Throwable e) {
+                    reportWtf("Notifying FaceBotService running", e);
                 }
                 try {
                     if (networkTimeUpdaterF != null) networkTimeUpdaterF.systemRunning();

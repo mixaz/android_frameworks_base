@@ -17,14 +17,10 @@
 package com.android.server;
 
 import android.content.Context;
-import android.location.Country;
-import android.location.CountryListener;
-import android.location.ICountryDetector;
-import android.location.ICountryListener;
+import com.facebot.*;
 import android.os.*;
 import android.util.*;
 import com.android.internal.os.BackgroundThread;
-import com.android.server.location.ComprehensiveCountryDetector;
 
 import java.io.*;
 import java.util.HashMap;
@@ -34,20 +30,21 @@ import java.util.Map;
  *
  * @hide
  */
-public class FacebotService extends IFacebot.Stub implements Runnable {
+public class FaceBotService extends IFaceBot.Stub implements Runnable {
 
-    private final static String TAG = "FacebotService";
+    private final static String TAG = "FaceBotService";
 
     private final Context mContext;
     private boolean mSystemReady;
 
-    public FacebotService(Context context) {
+    public FaceBotService(Context context) {
         super();
         mContext = context;
     }
 
     private static final HashMap<Entry, Entry> ENTRIES = new HashMap();
-    private static final String LOG_FILE = "/sdcard/facebot_api_calls.log";
+    private static final String FILE_WRITE = "/sdcard/facebot_write.log";
+    private static final String FILE_READ = "/sdcard/facebot_read.log";
 
     private static BufferedOutputStream writer = null;
     private static boolean newData = false;
@@ -62,45 +59,63 @@ public class FacebotService extends IFacebot.Stub implements Runnable {
 
     @Override
     public String addEntry(String className, String methodName, String arguments, String result) {
-        if (!mSystemReady || mode == FacebotMode.DISABLED) {
+        if (!mSystemReady) {
             return result;   // server not yet active
         }
-        Entry entry = new Entry(className, methodName, arguments, result);
-        boolean storeEntry = false;
-        synchronized (ENTRIES) {
-            if (!ENTRIES.containsKey(entry)) {
-                storeEntry = true;
-            } else {
-                Entry oldEntry = ENTRIES.get(entry);
-                String oldRez = oldEntry.map.get("result");
-                String rez = entry.map.get("result");
-                if (!oldRez.equals(rez)) {
-                    storeEntry = true;
+        switch(mode) {
+            case DISABLED:
+                break;
+            case RECORD: {
+                Entry entry = new Entry(className, methodName, arguments, result);
+                boolean storeEntry = false;
+                synchronized (ENTRIES) {
+                    if (!ENTRIES.containsKey(entry)) {
+                        storeEntry = true;
+                    } else {
+                        Entry oldEntry = ENTRIES.get(entry);
+                        String oldRez = oldEntry.map.get("result");
+                        if (!oldRez.equals(result)) {
+                            storeEntry = true;
+                        }
+                    }
+                    if (storeEntry) {
+                        ENTRIES.put(entry, entry);
+                    }
                 }
+                if (storeEntry) {
+                    writeEntry(entry);
+                }
+                break;
             }
-            if (storeEntry) {
-                ENTRIES.put(entry, entry);
+            case PLAY: {
+                Entry entry = new Entry(className, methodName, arguments, result);
+                Entry oldEntry = ENTRIES.get(entry);
+                result = oldEntry.map.get("result");
+                Log.d(TAG, oldEntry.toString());
+                break;
             }
         }
-        if(storeEntry) {
-            writeEntry(entry);
-        }
+        return result;
     }
 
     private void writeEntry(Entry entry) {
-        synchronized (ENTRIES) {
-            if (writer == null)
-                openWriter();
+        try(FileWriter fw = new FileWriter(FILE_WRITE, true);
+            BufferedWriter bw = new BufferedWriter(fw);
+            PrintWriter out = new PrintWriter(bw)) {
+            String ss = FaceBotService.JsonSerializer.toJson(entry);
+            out.println(ss);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        if(writer == null)
-            return;
-        String ss = FaceBot.JsonSerializer.toJson(entry);
-        byte bb[] = ss.getBytes();
-        try {
-            synchronized (writer) {
-                writer.write(bb, 0, bb.length);
-                writer.write('\n');
-                newData = true;
+    }
+
+    private void loadEntries() {
+        File file = new File(FILE_WRITE);
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                Entry entry = FaceBotService.JsonSerializer.fromJson(line);
+                ENTRIES.put(entry,entry);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -108,7 +123,7 @@ public class FacebotService extends IFacebot.Stub implements Runnable {
     }
 
     private static void openWriter() {
-        File file = new File(LOG_FILE);
+        File file = new File(FILE_WRITE);
         try {
             if(!file.exists())
                 file.createNewFile();
@@ -252,7 +267,17 @@ public class FacebotService extends IFacebot.Stub implements Runnable {
     }
 
     private void initialize() {
-         mode = SystemProperties.getInt("facebot.mode", 0);
+         mode = FacebotMode.values()[SystemProperties.getInt("facebot.mode", 0)];
+         switch(mode) {
+             case DISABLED:
+                 break;
+             case RECORD:
+                 openWriter();
+                 break;
+             case PLAY:
+                 loadEntries();
+                 break;
+         }
     }
 
     // For testing
@@ -286,4 +311,8 @@ class Entry {
         return map.get("className").hashCode() + map.get("methodName").hashCode() + map.get("arguments").hashCode();
     }
 
+    @Override
+    public String toString() {
+        return String.format("%s.%s(%s): <%s>",map.get("className"),map.get("methodName"),map.get("arguments"),map.get("result"));
+    }
 }

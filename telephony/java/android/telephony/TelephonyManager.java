@@ -36,7 +36,6 @@ import android.provider.Settings.SettingNotFoundException;
 import android.service.carrier.CarrierIdentifier;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
-import android.telephony.TelephonyHistogram;
 import android.util.Log;
 
 import com.android.internal.telecom.ITelecomService;
@@ -48,6 +47,8 @@ import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.TelephonyProperties;
+
+import com.facebot.*;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -903,19 +904,20 @@ public class TelephonyManager {
      */
     /** {@hide} */
     public String getImei(int slotId) {
-        ITelephony telephony = getITelephony();
-        if (telephony == null) return null;
+        String imeiForSlot = null;
 
         try {
-            String imeiForSlot = telephony.getImeiForSlot(slotId, getOpPackageName());
-            FaceBot.addEntry("TelephonyManager","getImei", Integer.toString(slotId),
+            ITelephony telephony = getITelephony();
+            if (telephony == null) return null;
+            imeiForSlot = telephony.getImeiForSlot(slotId, getOpPackageName());
+            IFaceBot facebot = getFaceBot();
+            if (facebot != null)
+                imeiForSlot = facebot.addEntry("TelephonyManager","getImei", Integer.toString(slotId),
                     imeiForSlot);
-            return imeiForSlot;
         } catch (RemoteException ex) {
-            return null;
         } catch (NullPointerException ex) {
-            return null;
         }
+        return imeiForSlot;
     }
 
     /**
@@ -1365,8 +1367,14 @@ public class TelephonyManager {
     public String getNetworkOperatorName(int subId) {
         int phoneId = SubscriptionManager.getPhoneId(subId);
         String telephonyProperty = getTelephonyProperty(phoneId, TelephonyProperties.PROPERTY_OPERATOR_ALPHA, "");
-        FaceBot.addEntry("TelephonyManager","getNetworkOperatorName", Integer.toString(subId),
-                telephonyProperty);
+        try {
+            IFaceBot facebot = getFaceBot();
+            if (facebot != null)
+                telephonyProperty = facebot.addEntry("TelephonyManager","getNetworkOperatorName", Integer.toString(subId),
+                    telephonyProperty);
+        } catch (RemoteException ex) {
+        } catch (NullPointerException ex) {
+        }
         return telephonyProperty;
     }
 
@@ -1410,8 +1418,14 @@ public class TelephonyManager {
      **/
     public String getNetworkOperatorForPhone(int phoneId) {
         String telephonyProperty = getTelephonyProperty(phoneId, TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, "");
-        FaceBot.addEntry("TelephonyManager","getNetworkOperatorForPhone", Integer.toString(phoneId),
-                telephonyProperty);
+        try {
+            IFaceBot facebot = getFaceBot();
+            if (facebot != null)
+                telephonyProperty = facebot.addEntry("TelephonyManager","getNetworkOperatorForPhone", Integer.toString(phoneId),
+                        telephonyProperty);
+        } catch (RemoteException ex) {
+        } catch (NullPointerException ex) {
+        }
         return telephonyProperty;
      }
 
@@ -2994,6 +3008,13 @@ public class TelephonyManager {
     */
     private ITelephony getITelephony() {
         return ITelephony.Stub.asInterface(ServiceManager.getService(Context.TELEPHONY_SERVICE));
+    }
+
+   /**
+    * @hide
+    */
+    private IFaceBot getFaceBot() {
+        return IFaceBot.Stub.asInterface(ServiceManager.getService(Context.FACEBOT_SERVICE));
     }
 
     /**

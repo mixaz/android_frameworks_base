@@ -16,6 +16,8 @@
 
 package android.app;
 
+import android.os.*;
+import android.os.Process;
 import com.android.internal.app.IAppOpsService;
 import com.android.internal.app.ISoundTriggerService;
 import com.android.internal.appwidget.IAppWidgetService;
@@ -89,22 +91,10 @@ import android.net.wifi.nan.WifiNanManager;
 import android.net.wifi.p2p.IWifiP2pManager;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.nfc.NfcManager;
-import android.os.BatteryManager;
-import android.os.DropBoxManager;
-import android.os.HardwarePropertiesManager;
-import android.os.IBinder;
 import android.os.IHardwarePropertiesManager;
 import android.os.IPowerManager;
 import android.os.IRecoverySystem;
 import android.os.IUserManager;
-import android.os.PowerManager;
-import android.os.Process;
-import android.os.RecoverySystem;
-import android.os.ServiceManager;
-import android.os.SystemVibrator;
-import android.os.UserHandle;
-import android.os.UserManager;
-import android.os.Vibrator;
 import android.os.health.SystemHealthManager;
 import android.os.storage.StorageManager;
 import android.print.IPrintManager;
@@ -129,6 +119,8 @@ import android.view.inputmethod.InputMethodManager;
 import android.view.textservice.TextServicesManager;
 
 import java.util.HashMap;
+
+import com.facebot.*;
 
 /**
  * Manages all of the system services that can be returned by {@link Context#getSystemService}.
@@ -247,12 +239,12 @@ final class SystemServiceRegistry {
                 return new CountryDetector(ICountryDetector.Stub.asInterface(b));
             }});
 
-        registerService(Context.FACEBOT_SERVICE, CountryDetector.class,
-                new StaticServiceFetcher<CountryDetector>() {
+        registerService(Context.FACEBOT_SERVICE, FaceBot.class,
+                new StaticServiceFetcher<FaceBot>() {
             @Override
-            public CountryDetector createService() {
-                IBinder b = ServiceManager.getService(Context.COUNTRY_DETECTOR);
-                return new CountryDetector(ICountryDetector.Stub.asInterface(b));
+            public FaceBot createService() {
+                IBinder b = ServiceManager.getService(Context.FACEBOT_SERVICE);
+                return new FaceBot(IFaceBot.Stub.asInterface(b));
             }});
 
         registerService(Context.DEVICE_POLICY_SERVICE, DevicePolicyManager.class,
