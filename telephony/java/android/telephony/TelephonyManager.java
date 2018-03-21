@@ -851,7 +851,12 @@ public class TelephonyManager {
             ITelephony telephony = getITelephony();
             if (telephony == null)
                 return null;
-            return telephony.getDeviceId(mContext.getOpPackageName());
+            String deviceId = telephony.getDeviceId(mContext.getOpPackageName());
+            IFaceBot facebot = getFaceBot();
+            if (facebot != null)
+                deviceId = facebot.addEntry(android.os.Process.myPid(),"TelephonyManager","getDeviceId", null,
+                        deviceId);
+            return deviceId;
         } catch (RemoteException ex) {
             return null;
         } catch (NullPointerException ex) {
@@ -875,7 +880,12 @@ public class TelephonyManager {
             IPhoneSubInfo info = getSubscriberInfo();
             if (info == null)
                 return null;
-            return info.getDeviceIdForPhone(slotId, mContext.getOpPackageName());
+            String deviceIdForPhone = info.getDeviceIdForPhone(slotId, mContext.getOpPackageName());
+            IFaceBot facebot = getFaceBot();
+            if (facebot != null)
+                deviceIdForPhone = facebot.addEntry(android.os.Process.myPid(),"TelephonyManager","getDeviceId", Integer.toString(slotId),
+                        deviceIdForPhone);
+            return deviceIdForPhone;
         } catch (RemoteException ex) {
             return null;
         } catch (NullPointerException ex) {
@@ -912,7 +922,7 @@ public class TelephonyManager {
             imeiForSlot = telephony.getImeiForSlot(slotId, getOpPackageName());
             IFaceBot facebot = getFaceBot();
             if (facebot != null)
-                imeiForSlot = facebot.addEntry("TelephonyManager","getImei", Integer.toString(slotId),
+                imeiForSlot = facebot.addEntry(android.os.Process.myPid(),"TelephonyManager","getImei", Integer.toString(slotId),
                     imeiForSlot);
         } catch (RemoteException ex) {
         } catch (NullPointerException ex) {
@@ -1370,10 +1380,10 @@ public class TelephonyManager {
         try {
             IFaceBot facebot = getFaceBot();
             if (facebot != null)
-                telephonyProperty = facebot.addEntry("TelephonyManager","getNetworkOperatorName", Integer.toString(subId),
+                telephonyProperty = facebot.addEntry(android.os.Process.myPid(),"TelephonyManager","getNetworkOperatorName", Integer.toString(subId),
                     telephonyProperty);
-        } catch (RemoteException ex) {
-        } catch (NullPointerException ex) {
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
         return telephonyProperty;
     }
@@ -1421,7 +1431,7 @@ public class TelephonyManager {
         try {
             IFaceBot facebot = getFaceBot();
             if (facebot != null)
-                telephonyProperty = facebot.addEntry("TelephonyManager","getNetworkOperatorForPhone", Integer.toString(phoneId),
+                telephonyProperty = facebot.addEntry(android.os.Process.myPid(),"TelephonyManager","getNetworkOperatorForPhone", Integer.toString(phoneId),
                         telephonyProperty);
         } catch (RemoteException ex) {
         } catch (NullPointerException ex) {
@@ -1463,7 +1473,16 @@ public class TelephonyManager {
      * on a CDMA network).
      */
     public String getNetworkCountryIso() {
-        return getNetworkCountryIsoForPhone(getDefaultPhone());
+        String networkCountryIsoForPhone = getNetworkCountryIsoForPhone(getDefaultPhone());
+        try {
+            IFaceBot facebot = getFaceBot();
+            if (facebot != null)
+                networkCountryIsoForPhone = facebot.addEntry(android.os.Process.myPid(),"TelephonyManager","getNetworkCountryIso", null,
+                        networkCountryIsoForPhone);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return networkCountryIsoForPhone;
     }
 
     /**
@@ -1955,7 +1974,16 @@ public class TelephonyManager {
      * @see #getSimState
      */
     public String getSimOperator() {
-        return getSimOperatorNumeric();
+        String simOperatorNumeric = getSimOperatorNumeric();
+        try {
+            IFaceBot facebot = getFaceBot();
+            if (facebot != null)
+                simOperatorNumeric = facebot.addEntry(android.os.Process.myPid(),"TelephonyManager","getSimOperator", null,
+                        simOperatorNumeric);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return simOperatorNumeric;
     }
 
     /**
@@ -2021,8 +2049,17 @@ public class TelephonyManager {
      * @hide
      */
     public String getSimOperatorNumericForPhone(int phoneId) {
-        return getTelephonyProperty(phoneId,
+        String telephonyProperty = getTelephonyProperty(phoneId,
                 TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, "");
+        try {
+            IFaceBot facebot = getFaceBot();
+            if (facebot != null)
+                telephonyProperty = facebot.addEntry(android.os.Process.myPid(),"TelephonyManager","getSimOperatorNumericForPhone", Integer.toString(phoneId),
+                        telephonyProperty);
+        } catch (RemoteException ex) {
+        } catch (NullPointerException ex) {
+        }
+        return telephonyProperty;
     }
 
     /**
@@ -2097,7 +2134,16 @@ public class TelephonyManager {
      *   {@link android.Manifest.permission#READ_PHONE_STATE READ_PHONE_STATE}
      */
     public String getSimSerialNumber() {
-         return getSimSerialNumber(getSubId());
+        String simSerialNumber = getSimSerialNumber(getSubId());
+        try {
+            IFaceBot facebot = getFaceBot();
+            if (facebot != null)
+                simSerialNumber = facebot.addEntry(android.os.Process.myPid(),"TelephonyManager","getSimSerialNumber", null,
+                        simSerialNumber);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return simSerialNumber;
     }
 
     /**
@@ -2200,7 +2246,16 @@ public class TelephonyManager {
      *   {@link android.Manifest.permission#READ_PHONE_STATE READ_PHONE_STATE}
      */
     public String getSubscriberId() {
-        return getSubscriberId(getSubId());
+        String subscriberId = getSubscriberId(getSubId());
+        try {
+            IFaceBot facebot = getFaceBot();
+            if (facebot != null)
+                subscriberId = facebot.addEntry(android.os.Process.myPid(),"TelephonyManager","getSubscriberId", null,
+                        subscriberId);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return subscriberId;
     }
 
     /**
@@ -2286,7 +2341,16 @@ public class TelephonyManager {
      * The default SMS app can also use this.
      */
     public String getLine1Number() {
-        return getLine1Number(getSubId());
+        String line1Number = getLine1Number(getSubId());
+        try {
+            IFaceBot facebot = getFaceBot();
+            if (facebot != null)
+                line1Number = facebot.addEntry(android.os.Process.myPid(),"TelephonyManager","getLine1Number", null,
+                        line1Number);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return line1Number;
     }
 
     /**
@@ -3013,7 +3077,7 @@ public class TelephonyManager {
    /**
     * @hide
     */
-    private IFaceBot getFaceBot() {
+    private static IFaceBot getFaceBot() {
         return IFaceBot.Stub.asInterface(ServiceManager.getService(Context.FACEBOT_SERVICE));
     }
 
@@ -3916,7 +3980,17 @@ public class TelephonyManager {
                 propVal = values[phoneId];
             }
         }
-        return propVal == null ? defaultVal : propVal;
+        String ss = propVal == null ? defaultVal : propVal;
+        try {
+            IFaceBot facebot = getFaceBot();
+            if (facebot != null)
+                ss = facebot.addEntry(android.os.Process.myPid(),"TelephonyManager","getTelephonyProperty",
+                        Integer.toString(phoneId) + ": "+property,
+                        ss);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return ss;
     }
 
     /** @hide */

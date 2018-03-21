@@ -16,12 +16,15 @@
 
 package com.facebot;
 
+import android.app.ActivityManager;
+import android.content.Context;
 import android.util.*;
 
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 import android.os.RemoteException;
+import android.os.Process;
 import android.util.Log;
 
 /**
@@ -44,9 +47,9 @@ public class FaceBot {
         mService = service;
     }
 
-    public String addEntry(String className, String methodName, String arguments, String result) {
+    public String addEntry(int pid, String className, String methodName, String arguments, String result) {
         try {
-            return mService.addEntry(className,methodName,arguments,result);
+            return mService.addEntry(pid,className,methodName,arguments,result);
         } catch (RemoteException e) {
             Log.e(TAG, "addEntry: RemoteException", e);
             return result;

@@ -16,6 +16,7 @@
 
 package com.android.server;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import com.facebot.*;
 import android.os.*;
@@ -23,7 +24,9 @@ import android.util.*;
 import com.android.internal.os.BackgroundThread;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -33,20 +36,20 @@ import java.util.Map;
 public class FaceBotService extends IFaceBot.Stub implements Runnable {
 
     private final static String TAG = "FaceBotService";
-    public static final String FACEBOT_MODE_PROPERTY = "facebot.mode";
+    public static final String FACEBOT_MODE_PROPERTY = "persist.facebot.mode";
 
-    //    private final Context mContext;
+    private final Context mContext;
     private boolean mSystemReady;
 
     public FaceBotService(Context context) {
         super();
-//        mContext = context;
+        mContext = context;
     }
 
     private final HashMap<Entry, Entry> CURR_ENTRIES = new HashMap();
     private final HashMap<Entry, Entry> NEW_ENTRIES = new HashMap();
-    private final String FILE_WRITE = "/sdcard/facebot_write.log";
-    private final String FILE_READ  = "/sdcard/facebot_read.log";
+    private final String FILE_WRITE = "/data/facebot_write.log";
+    private final String FILE_READ  = "/data/facebot_read.log";
 
 //    private BufferedOutputStream writer = null;
     private boolean newData = false;
@@ -58,17 +61,34 @@ public class FaceBotService extends IFaceBot.Stub implements Runnable {
     }
 
     private FacebotMode mode;
+    private HashMap<Integer,String> processes = new HashMap<>();
+
+    private void loadProcesses() {
+        ActivityManager manager = (ActivityManager) mContext.getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningAppProcessInfo processInfo : manager.getRunningAppProcesses()) {
+            processes.put(processInfo.pid,processInfo.processName);
+        }
+    }
+
+    private String getProcessName(int pid) {
+        String processName = processes.get(pid);
+        if(processName == null) {
+            processName = Integer.toString(pid);
+        }
+        return processName;
+    }
 
     @Override
-    public String addEntry(String className, String methodName, String arguments, String result) {
+    public String addEntry(int pid, String className, String methodName, String arguments, String result) {
         if (!mSystemReady) {
             return result;   // server not yet active
         }
+        String spid = getProcessName(pid);
         switch(mode) {
             case DISABLED:
                 break;
             case RECORD: {
-                Entry entry = new Entry(className, methodName, arguments, result);
+                Entry entry = new Entry(spid, className, methodName, arguments, result);
                 boolean storeEntry = false;
                 synchronized (CURR_ENTRIES) {
                     if (!CURR_ENTRIES.containsKey(entry)) {
@@ -77,7 +97,8 @@ public class FaceBotService extends IFaceBot.Stub implements Runnable {
                     else {
                         Entry oldEntry = CURR_ENTRIES.get(entry);
                         String oldRez = oldEntry.map.get("result");
-                        if (!oldRez.equals(result)) {
+                        String oldPid = oldEntry.map.get("pid");
+                        if (!oldRez.equals(result) || !oldPid.equals(spid)) {
                             storeEntry = true;
                         }
                     }
@@ -92,10 +113,11 @@ public class FaceBotService extends IFaceBot.Stub implements Runnable {
                 break;
             }
             case PLAY: {
-                Entry entry = new Entry(className, methodName, arguments, result);
+                Entry entry = new Entry(spid,className, methodName, arguments, result);
                 Entry oldEntry = CURR_ENTRIES.get(entry);
-                result = oldEntry.map.get("result");
-                Log.d(TAG, oldEntry.toString());
+                if(oldEntry != null) {
+                    result = oldEntry.map.get("result");
+                }
                 break;
             }
         }
@@ -127,6 +149,7 @@ public class FaceBotService extends IFaceBot.Stub implements Runnable {
             while ((line = br.readLine()) != null) {
                 Entry entry = FaceBotService.JsonSerializer.fromJson(line);
                 CURR_ENTRIES.put(entry,entry);
+                Log.d(TAG,"Loaded entry:"+entry.toString());
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -138,6 +161,7 @@ public class FaceBotService extends IFaceBot.Stub implements Runnable {
             @Override
             public void run() {
                 while(true) {
+                    loadProcesses();
                     if(newData) {
                         try {
                             writeEntries();
@@ -151,7 +175,7 @@ public class FaceBotService extends IFaceBot.Stub implements Runnable {
                         }
                     }
                     try {
-                        Thread.sleep(10000);
+                        Thread.sleep(3000);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                         break;
@@ -173,7 +197,7 @@ public class FaceBotService extends IFaceBot.Stub implements Runnable {
                 writeEntry(jsonWriter, entry);
                 json = writer.toString();
             } catch(IOException e) {
-                Log.e(TAG, "Could not write theme mapping", e);
+                Log.e(TAG, "Could not write entry", e);
             } finally {
                 closeQuietly(writer);
                 closeQuietly(jsonWriter);
@@ -208,7 +232,7 @@ public class FaceBotService extends IFaceBot.Stub implements Runnable {
                 }
                 jsonReader.endObject();
             } catch(Exception e) {
-                Log.e(TAG, "Could not parse Entry from: " + json, e);
+                Log.e(TAG, "Could not parse entry from: " + json, e);
             } finally {
                 closeQuietly(reader);
                 closeQuietly(jsonReader);
@@ -284,8 +308,9 @@ public class FaceBotService extends IFaceBot.Stub implements Runnable {
 class Entry {
     Map<String, String> map;
 
-    Entry(String className, String methodName, String arguments, String result) {
+    Entry(String pid,String className, String methodName, String arguments, String result) {
         map = new ArrayMap<>();
+        map.put("pid",pid);
         map.put("className",className);
         map.put("methodName",methodName);
         map.put("arguments",arguments);
@@ -296,12 +321,20 @@ class Entry {
         this.map = map;
     }
 
-    public final int hashCode() {
-        return map.get("className").hashCode() + map.get("methodName").hashCode() + map.get("arguments").hashCode();
+    @Override
+    public int hashCode() {
+        String args = map.get("arguments");
+        return map.get("className").hashCode() + map.get("methodName").hashCode() +
+                (args == null ? 0 : args.hashCode());
     }
 
     @Override
     public String toString() {
-        return String.format("%s.%s(%s): <%s>",map.get("className"),map.get("methodName"),map.get("arguments"),map.get("result"));
+        return String.format("[%s] %s.%s(%s): <%s>",map.get("pid"),map.get("className"),map.get("methodName"),map.get("arguments"),map.get("result"));
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return hashCode() == obj.hashCode();
     }
 }

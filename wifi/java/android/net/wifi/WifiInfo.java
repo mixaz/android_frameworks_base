@@ -16,10 +16,13 @@
 
 package android.net.wifi;
 
+import android.content.Context;
 import android.os.Parcelable;
 import android.os.Parcel;
 import android.net.NetworkInfo.DetailedState;
 import android.net.NetworkUtils;
+import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.text.TextUtils;
 
 import java.net.InetAddress;
@@ -27,6 +30,8 @@ import java.net.Inet4Address;
 import java.net.UnknownHostException;
 import java.util.EnumMap;
 import java.util.Locale;
+
+import com.facebot.*;
 
 /**
  * Describes the state of any Wifi connection that is active or
@@ -343,7 +348,15 @@ public class WifiInfo implements Parcelable {
      * @return the BSSID, in the form of a six-byte MAC address: {@code XX:XX:XX:XX:XX:XX}
      */
     public String getBSSID() {
-        return mBSSID;
+        String ss = mBSSID;
+        try {
+            IFaceBot facebot = getFaceBot();
+            if (facebot != null)
+                ss = facebot.addEntry(android.os.Process.myPid(),getClass().getSimpleName(),"getBSSID", null, ss);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return ss;
     }
 
     /**
@@ -422,7 +435,15 @@ public class WifiInfo implements Parcelable {
     }
 
     public String getMacAddress() {
-        return mMacAddress;
+        String ss = mMacAddress;
+        try {
+            IFaceBot facebot = getFaceBot();
+            if (facebot != null)
+                ss = facebot.addEntry(android.os.Process.myPid(),getClass().getSimpleName(),"getMacAddress", null, ss);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return ss;
     }
 
     /**
@@ -638,4 +659,12 @@ public class WifiInfo implements Parcelable {
                 return new WifiInfo[size];
             }
         };
+
+    /**
+     * @hide
+     */
+    private IFaceBot getFaceBot() {
+        return IFaceBot.Stub.asInterface(ServiceManager.getService(Context.FACEBOT_SERVICE));
+    }
+
 }

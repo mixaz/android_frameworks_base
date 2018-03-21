@@ -5,5 +5,5 @@ package com.facebot;
  */
 interface IFaceBot
 {
-    String addEntry(String className, String methodName, String arguments, String result);
+    String addEntry(int pid, String className, String methodName, String arguments, String result);
 }
